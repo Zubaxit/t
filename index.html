@@ -1,25 +1,29 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>YouTube Downloader</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <style>
     body {
       margin: 0;
-      background: #0d0d0d;
+      min-height: 100vh;
+      background: radial-gradient(circle at top, #111 0%, #000 60%);
       color: #fff;
       font-family: system-ui, Arial;
-      padding: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
-    .box {
+    .app {
+      width: 100%;
       max-width: 520px;
-      margin: auto;
+      padding: 24px;
     }
 
-    h2 {
+    h1 {
       text-align: center;
       margin-bottom: 20px;
     }
@@ -28,79 +32,80 @@
       width: 100%;
       padding: 14px;
       font-size: 16px;
-      border-radius: 8px;
+      border-radius: 10px;
       border: none;
-      margin-top: 10px;
+      outline: none;
     }
 
     input {
-      background: #1b1b1b;
+      background: #1a1a1a;
       color: #fff;
     }
 
     button {
-      background: #00ffcc;
+      margin-top: 12px;
+      background: #00ffd0;
       color: #000;
-      font-weight: bold;
+      font-weight: 600;
       cursor: pointer;
     }
 
-    .loading {
+    .status {
+      margin-top: 16px;
       text-align: center;
-      margin-top: 20px;
       opacity: 0.8;
     }
 
     .card {
-      background: #1a1a1a;
-      margin-top: 15px;
-      padding: 15px;
-      border-radius: 10px;
+      background: #161616;
+      border-radius: 14px;
+      padding: 16px;
+      margin-top: 18px;
     }
 
     img {
       width: 100%;
-      border-radius: 8px;
+      border-radius: 10px;
     }
 
     .title {
-      font-size: 17px;
-      margin: 10px 0;
+      margin-top: 10px;
+      font-size: 18px;
     }
 
-    .tag {
+    .badge {
       display: inline-block;
+      margin-top: 6px;
       padding: 4px 10px;
       font-size: 12px;
-      background: #333;
+      background: #2a2a2a;
       border-radius: 20px;
-      margin-bottom: 6px;
     }
 
-    a {
+    .section {
+      margin-top: 22px;
+      opacity: 0.7;
+    }
+
+    a.download {
       display: block;
-      margin-top: 8px;
-      padding: 10px;
-      background: #00ffcc;
+      margin-top: 10px;
+      padding: 12px;
+      background: #00ffd0;
       color: #000;
       text-align: center;
-      border-radius: 6px;
+      border-radius: 8px;
       text-decoration: none;
-      font-weight: bold;
-    }
-
-    .section-title {
-      margin-top: 25px;
-      opacity: 0.7;
+      font-weight: 600;
     }
   </style>
 </head>
 <body>
 
-<div class="box">
-  <h2>YouTube Downloader</h2>
+<div class="app">
+  <h1>YouTube Downloader</h1>
 
-  <input id="yturl" placeholder="Paste YouTube link" />
+  <input id="yturl" placeholder="Paste YouTube video link" />
   <button onclick="loadVideo()">Download</button>
 
   <div id="result"></div>
@@ -110,23 +115,31 @@
 const API =
   "https://ytsaveapi-hasan.vercel.app/api/youtube/download?url=";
 
-async function loadVideo() {
-  const url = document.getElementById("yturl").value.trim();
-  const result = document.getElementById("result");
+function cleanYouTubeUrl(url) {
+  if (!url) return "";
+  return url.split("&")[0].trim();
+}
 
-  if (!url) {
+async function loadVideo() {
+  const input = document.getElementById("yturl");
+  const result = document.getElementById("result");
+  const rawUrl = input.value;
+
+  if (!rawUrl) {
     alert("YouTube link দে আগে");
     return;
   }
 
-  result.innerHTML = `<div class="loading">Fetching video info...</div>`;
+  const url = cleanYouTubeUrl(rawUrl);
+
+  result.innerHTML = `<div class="status">Video info লোড হচ্ছে...</div>`;
 
   try {
     const res = await fetch(API + encodeURIComponent(url));
     const data = await res.json();
 
-    if (!data.success) {
-      result.innerHTML = "Video load করা গেল না";
+    if (!data.success || !data.data) {
+      result.innerHTML = `<div class="status">Video load করা গেল না</div>`;
       return;
     }
 
@@ -137,31 +150,39 @@ async function loadVideo() {
       <div class="card">
         <img src="${data.data.cover}">
         <div class="title">${data.data.title}</div>
-        <div class="tag">Duration: ${Math.floor(data.data.duration / 60)}:${String(data.data.duration % 60).padStart(2,"0")}</div>
+        <div class="badge">
+          Duration: ${Math.floor(data.data.duration / 60)}:${String(
+            data.data.duration % 60
+          ).padStart(2, "0")}
+        </div>
       </div>
     `;
 
     if (videoItems.length) {
-      html += `<div class="section-title">Video</div>`;
+      html += `<div class="section">Video</div>`;
       videoItems.forEach(item => {
         html += `
           <div class="card">
-            <div class="tag">${item.label}</div>
+            <div class="badge">${item.label}</div>
             <div>Size: ${item.size}</div>
-            <a href="${item.url}" target="_blank">Download Video</a>
+            <a class="download" href="${item.url}" target="_blank">
+              Download Video
+            </a>
           </div>
         `;
       });
     }
 
     if (audioItems.length) {
-      html += `<div class="section-title">Audio</div>`;
+      html += `<div class="section">Audio</div>`;
       audioItems.forEach(item => {
         html += `
           <div class="card">
-            <div class="tag">${item.label}</div>
+            <div class="badge">${item.label}</div>
             <div>Size: ${item.size}</div>
-            <a href="${item.url}" target="_blank">Download Audio</a>
+            <a class="download" href="${item.url}" target="_blank">
+              Download Audio
+            </a>
           </div>
         `;
       });
@@ -169,8 +190,8 @@ async function loadVideo() {
 
     result.innerHTML = html;
 
-  } catch (e) {
-    result.innerHTML = "Something went wrong";
+  } catch (err) {
+    result.innerHTML = `<div class="status">কিছু একটা সমস্যা হচ্ছে</div>`;
   }
 }
 </script>
