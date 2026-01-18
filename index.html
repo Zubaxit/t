@@ -1,33 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>YouTube Downloader</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       margin: 0;
       min-height: 100vh;
-      background: radial-gradient(circle at top, #111 0%, #000 60%);
+      background: #000;
       color: #fff;
       font-family: system-ui, Arial;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-
     .app {
       width: 100%;
       max-width: 520px;
       padding: 24px;
     }
-
     h1 {
       text-align: center;
       margin-bottom: 20px;
     }
-
     input, button {
       width: 100%;
       padding: 14px;
@@ -36,12 +32,10 @@
       border: none;
       outline: none;
     }
-
     input {
       background: #1a1a1a;
       color: #fff;
     }
-
     button {
       margin-top: 12px;
       background: #00ffd0;
@@ -49,45 +43,22 @@
       font-weight: 600;
       cursor: pointer;
     }
-
     .status {
       margin-top: 16px;
       text-align: center;
       opacity: 0.8;
     }
-
     .card {
       background: #161616;
       border-radius: 14px;
       padding: 16px;
       margin-top: 18px;
     }
-
     img {
       width: 100%;
       border-radius: 10px;
     }
-
-    .title {
-      margin-top: 10px;
-      font-size: 18px;
-    }
-
-    .badge {
-      display: inline-block;
-      margin-top: 6px;
-      padding: 4px 10px;
-      font-size: 12px;
-      background: #2a2a2a;
-      border-radius: 20px;
-    }
-
-    .section {
-      margin-top: 22px;
-      opacity: 0.7;
-    }
-
-    a.download {
+    a {
       display: block;
       margin-top: 10px;
       padding: 12px;
@@ -104,94 +75,70 @@
 
 <div class="app">
   <h1>YouTube Downloader</h1>
-
-  <input id="yturl" placeholder="Paste YouTube video link" />
+  <input id="yturl" placeholder="Paste YouTube link or video ID" />
   <button onclick="loadVideo()">Download</button>
-
   <div id="result"></div>
 </div>
 
 <script>
-const API =
-  "https://ytsaveapi-hasan.vercel.app/api/youtube/download?url=";
+const API = "https://ytsaveapi-hasan.vercel.app/api/youtube/download?url=";
 
-function cleanYouTubeUrl(url) {
-  if (!url) return "";
-  return url.split("&")[0].trim();
+function extractVideoId(input) {
+  if (!input) return null;
+
+  if (/^[a-zA-Z0-9_-]{11}$/.test(input)) return input;
+
+  try {
+    const url = new URL(input);
+    if (url.searchParams.get("v")) return url.searchParams.get("v");
+    if (url.hostname.includes("youtu.be")) return url.pathname.slice(1);
+  } catch {}
+
+  return null;
 }
 
 async function loadVideo() {
-  const input = document.getElementById("yturl");
+  const input = document.getElementById("yturl").value.trim();
   const result = document.getElementById("result");
-  const rawUrl = input.value;
 
-  if (!rawUrl) {
-    alert("YouTube link দে আগে");
+  const videoId = extractVideoId(input);
+  if (!videoId) {
+    result.innerHTML = `<div class="status">Valid YouTube link দাও</div>`;
     return;
   }
 
-  const url = cleanYouTubeUrl(rawUrl);
-
+  const cleanUrl = "https://www.youtube.com/watch?v=" + videoId;
   result.innerHTML = `<div class="status">Video info লোড হচ্ছে...</div>`;
 
   try {
-    const res = await fetch(API + encodeURIComponent(url));
+    const res = await fetch(API + encodeURIComponent(cleanUrl));
     const data = await res.json();
 
-    if (!data.success || !data.data) {
-      result.innerHTML = `<div class="status">Video load করা গেল না</div>`;
+    if (!data.success) {
+      result.innerHTML = `<div class="status">API এই ভিডিওটা দিচ্ছে না</div>`;
       return;
     }
-
-    const videoItems = data.data.items.filter(i => i.type !== "audio");
-    const audioItems = data.data.items.filter(i => i.type === "audio");
 
     let html = `
       <div class="card">
         <img src="${data.data.cover}">
-        <div class="title">${data.data.title}</div>
-        <div class="badge">
-          Duration: ${Math.floor(data.data.duration / 60)}:${String(
-            data.data.duration % 60
-          ).padStart(2, "0")}
-        </div>
+        <div>${data.data.title}</div>
       </div>
     `;
 
-    if (videoItems.length) {
-      html += `<div class="section">Video</div>`;
-      videoItems.forEach(item => {
-        html += `
-          <div class="card">
-            <div class="badge">${item.label}</div>
-            <div>Size: ${item.size}</div>
-            <a class="download" href="${item.url}" target="_blank">
-              Download Video
-            </a>
-          </div>
-        `;
-      });
-    }
-
-    if (audioItems.length) {
-      html += `<div class="section">Audio</div>`;
-      audioItems.forEach(item => {
-        html += `
-          <div class="card">
-            <div class="badge">${item.label}</div>
-            <div>Size: ${item.size}</div>
-            <a class="download" href="${item.url}" target="_blank">
-              Download Audio
-            </a>
-          </div>
-        `;
-      });
-    }
+    data.data.items.forEach(item => {
+      html += `
+        <div class="card">
+          <div>${item.label} • ${item.size}</div>
+          <a href="${item.url}" target="_blank">Download</a>
+        </div>
+      `;
+    });
 
     result.innerHTML = html;
 
-  } catch (err) {
-    result.innerHTML = `<div class="status">কিছু একটা সমস্যা হচ্ছে</div>`;
+  } catch {
+    result.innerHTML = `<div class="status">Network / API error</div>`;
   }
 }
 </script>
